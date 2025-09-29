@@ -11,47 +11,77 @@ if not timeline:
 markers = timeline.GetMarkers()
 marker_positions = sorted(markers.keys())
 
-if not marker_positions:
-    print("No markers on timeline")
+if len(marker_positions) < 2:
+    print("Need at least 2 markers")
     exit()
 
-# Get clips from Media Pool
-media_pool = project.GetMediaPool()
-current_folder = media_pool.GetCurrentFolder()
-selected_clips = current_folder.GetClips()
+print(f"Found {len(marker_positions)} markers creating {len(marker_positions)-1} intervals")
 
-if not selected_clips:
-    print("No clips in Media Pool folder")
-    exit()
+# Get all items from video track 1
+video_track = 1
+items = timeline.GetItemListInTrack("video", video_track)
+items.sort(key=lambda item: item.GetStart())
 
-clips_list = list(selected_clips.values())
+print(f"Found {len(items)} clips\n")
 
-# Loop through markers and place clips
-for i, marker_frame in enumerate(marker_positions[:-1]):
-    if i >= len(clips_list):
-        break
+num_to_process = min(len(items), len(marker_positions) - 1)
 
-    clip = clips_list[i]
-    start_frame = marker_frame
-    end_frame = marker_positions[i + 1]
-    duration = end_frame - start_frame
+# Try to get the current playhead position
+current_playhead = timeline.GetCurrentTimecode()
 
-    # Use AppendToTimeline with proper clip info
-    clip_info = {
-        "mediaPoolItem": clip,
-        "trackIndex": 1,
-        "recordFrame": int(start_frame)
-    }
+# Process clips by selecting and using timeline edit functions
+for i in range(num_to_process):
+    item = items[i]
 
-    media_pool.AppendToTimeline([clip_info])
+    # Target duration from markers
+    target_duration = marker_positions[i + 1] - marker_positions[i]
 
-    # Get the just-added clip
-    items = timeline.GetItemListInTrack("video", 1)
-    if items:
-        last_item = items[-1]
-        # Trim the clip to match duration
-        last_item.SetProperty("End", int(start_frame + duration))
+    # Current info
+    current_start = item.GetStart()
+    current_end = item.GetEnd()
+    current_duration = current_end - current_start
 
-    print(f"Placed clip {i+1} at frame {start_frame} with duration {duration}")
+    print(f"Clip {i+1}: Duration {current_duration} -> {target_duration}")
+
+    if current_duration == target_duration:
+        print(f"  Already correct duration\n")
+        continue
+
+    # Calculate new end point
+    new_end = current_start + target_duration
+    trim_amount = current_duration - target_duration
+
+    # Try using timeline-level trim operations
+    # Position playhead at the point where we want to trim
+    trim_position = new_end
+
+    try:
+        # Set playhead to trim position
+        timeline.SetCurrentTimecode(str(trim_position))
+
+        # Select only this clip
+        timeline.SelectItem(item)
+
+        # Try to use Trim function
+        if trim_amount > 0:
+            # Trim from right (make shorter)
+            result = timeline.TrimEnd(item, trim_position, False)
+            print(f"  TrimEnd result: {result}")
+        else:
+            # Extend right (make longer)
+            result = timeline.ExtendEnd(item, trim_position)
+            print(f"  ExtendEnd result: {result}")
+
+    except Exception as e:
+        print(f"  Error: {e}")
+
+    # Verify
+    final_start = item.GetStart()
+    final_end = item.GetEnd()
+    final_duration = final_end - final_start
+    print(f"  Result: {final_start} to {final_end} (duration: {final_duration})\n")
+
+# Restore playhead
+timeline.SetCurrentTimecode(current_playhead)
 
 print("Done!")
