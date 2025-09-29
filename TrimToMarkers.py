@@ -85,3 +85,91 @@ for i in range(num_to_process):
 timeline.SetCurrentTimecode(current_playhead)
 
 print("Done!")
+
+# # Get Resolve app
+# resolve = bmd.scriptapp("Resolve")
+# project = resolve.GetProjectManager().GetCurrentProject()
+# timeline = project.GetCurrentTimeline()
+# media_pool = project.GetMediaPool()
+
+# if not timeline:
+#     print("No active timeline")
+#     exit()
+
+# # Get all timeline markers
+# markers = timeline.GetMarkers()
+# marker_positions = sorted(markers.keys())
+
+# if len(marker_positions) < 2:
+#     print("Need at least 2 markers")
+#     exit()
+
+# print(f"Found {len(marker_positions)} markers creating {len(marker_positions)-1} intervals")
+
+# # Get all items from video track 1
+# video_track = 1
+# items = timeline.GetItemListInTrack("video", video_track)
+
+# if not items:
+#     print(f"No clips found on video track {video_track}")
+#     exit()
+
+# items.sort(key=lambda item: item.GetStart())
+# print(f"Found {len(items)} clips on track {video_track}\n")
+
+# num_to_process = min(len(items), len(marker_positions) - 1)
+
+# # Store all clip info before making changes
+# clip_data = []
+# for i in range(num_to_process):
+#     item = items[i]
+#     media_pool_item = item.GetMediaPoolItem()
+#     start_frame = marker_positions[i]
+#     end_frame = marker_positions[i + 1]
+#     duration = end_frame - start_frame
+
+#     clip_data.append({
+#         "mediaPoolItem": media_pool_item,
+#         "name": media_pool_item.GetName() if media_pool_item else f"Clip {i+1}",
+#         "startFrame": start_frame,
+#         "endFrame": end_frame,
+#         "duration": duration
+#     })
+
+# print(f"Processing {len(clip_data)} clips...\n")
+
+# # Delete all original clips
+# print("Deleting original clips...")
+# timeline.DeleteClips(items[:num_to_process], False)
+
+# # Add clips back one by one
+# for i, data in enumerate(clip_data):
+#     print(f"Clip {i+1} ({data['name']}): frame {data['startFrame']} to {data['endFrame']} (duration: {data['duration']})")
+
+#     # Create clip info with explicit parameters
+#     clip_info = {
+#         "mediaPoolItem": data["mediaPoolItem"],
+#         "startFrame": 0,  # Start from beginning of source
+#         "endFrame": data["duration"] - 1,  # Trim to exact duration
+#         "recordFrame": data["startFrame"]  # Place at marker position
+#     }
+
+#     # Append to timeline
+#     result = media_pool.AppendToTimeline([clip_info])
+
+#     if not result:
+#         print(f"  WARNING: Failed to add clip {i+1}")
+#     else:
+#         # Verify placement
+#         current_items = timeline.GetItemListInTrack("video", video_track)
+#         if current_items:
+#             last_item = current_items[-1]
+#             actual_start = last_item.GetStart()
+#             actual_end = last_item.GetEnd()
+#             print(f"  Added: start={actual_start}, end={actual_end}, duration={actual_end - actual_start}")
+
+#             # Check if placement is correct
+#             if actual_start != data["startFrame"]:
+#                 print(f"  WARNING: Expected start {data['startFrame']} but got {actual_start}")
+
+# print("\nDone!")
